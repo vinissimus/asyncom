@@ -5,8 +5,10 @@ import pytest
 from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy as sa
 from sqlalchemy import orm
+from asyncom import OMBase
 
-Base = declarative_base()
+
+Base = declarative_base(cls=OMBase)
 
 
 class OrmTest(Base):
@@ -110,5 +112,14 @@ async def test_aiter(async_db, data):
     assert await exists() is False
 
 
+@pytest.mark.asyncio
+async def test_sqlbuilder_still_works(async_db, data):
+    ins = OrmTest(name="test", value="xxxx")
+    ins2 = OrmTest(name="test2", value="xxxx")
+    await async_db.add(ins, ins2)
 
+    q = (OrmTest.select()
+        .where(OrmTest.name == "test")
+        .with_only_columns([OrmTest.value]))
 
+    assert await async_db.fetch_val(query=q) == "xxxx"

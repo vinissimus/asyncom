@@ -3,6 +3,8 @@
 
 from .om import OMDatabase  # noqa
 from .om import OMQuery  # noqa
+from .om import OMBase  # noqa
+
 
 __author__ = """Jordi Collell"""
 __email__ = 'jordic@gmail.com'

@@ -136,3 +136,9 @@ class OMDatabase(Database):
         return await self.execute(expr)
 
     delete = remove
+
+
+class OMBase:
+    @classmethod
+    def select(cls, *args, **kwargs):
+        return cls.__table__.select(*args, **kwargs)
