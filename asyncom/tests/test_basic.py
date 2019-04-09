@@ -4,6 +4,7 @@
 import pytest
 from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy as sa
+from sqlalchemy import orm
 
 Base = declarative_base()
 
@@ -14,6 +15,21 @@ class OrmTest(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(100), index=True)
     value = sa.Column(sa.Text)
+
+    # many = orm.relationship('ManyTests', lazy='noload')
+    # we cannot support relationships
+    # props = has_many('ManyTests')
+
+    @property
+    def items(self):
+        qs = self.__db__.query(
+            ManyTests).filter_by(id_orm=self.id)
+        return qs
+
+    async def append_item(self, value):
+        await self.__db__.add(
+            ManyTests(id_orm=self.id, other=value)
+        )
 
 
 class ManyTests(Base):
@@ -31,6 +47,7 @@ async def data(async_db):
     url = str(async_db.url)
     engine = sa.create_engine(url)
     Base.metadata.create_all(engine)
+
 
 
 @pytest.mark.asyncio
@@ -64,3 +81,34 @@ async def test_aiter(async_db, data):
 
     assert await async_db.query(OrmTest).filter(
         OrmTest.name == "test").count() == 1
+
+    await async_db.add(
+        ManyTests(id_orm=ins.id, other='value 1'),
+        ManyTests(id_orm=ins.id, other='value 2')
+    )
+    ins.__db__ = async_db
+    assert await ins.items.count() == 2
+    await ins.append_item('value 3')
+    assert await ins.items.count() == 3
+
+    res = await async_db.query(ManyTests).order_by(
+        ManyTests.other.desc()).all()
+
+    assert res[0].other == 'value 3'
+    assert res[1].other == 'value 2'
+
+    await ins.items.delete()
+    assert await ins.items.count() == 0
+
+    async def exists():
+        return await async_db.query(sa.sql.exists().where(
+            OrmTest.id == ins.id
+        )).scalar()
+
+    assert await exists() is True
+    await async_db.delete(ins)
+    assert await exists() is False
+
+
+
+

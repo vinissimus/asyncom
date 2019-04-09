@@ -80,6 +80,12 @@ class OMQuery(Query):
             return res
         return [entity.entity(**map_result(r)) for r in result]
 
+    async def delete(self):
+        context = self._compile_context()
+        entity = self._entity_zero().entity
+        op = sql.delete(entity.__table__, context.whereclause)
+        return await self.__db.execute(op)
+
 
 class OMDatabase(Database):
     def query(self, args):
@@ -128,3 +134,5 @@ class OMDatabase(Database):
         )
         ins = None
         return await self.execute(expr)
+
+    delete = remove
