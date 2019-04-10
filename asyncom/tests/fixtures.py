@@ -15,14 +15,12 @@ def db(pgsql):
     from databases import DatabaseURL
     host, port = pgsql
     url = f'postgresql://postgres@{host}:{port}/guillotina'
-    dbins = OMDatabase(DatabaseURL(url))
+    dbins = OMDatabase(DatabaseURL(url), force_rollback=True)
     yield dbins
 
 
 @pytest.fixture
 async def async_db(db):
     await db.connect()
-    transaction = await db.transaction()
     yield db
-    await transaction.rollback()
     await db.disconnect()

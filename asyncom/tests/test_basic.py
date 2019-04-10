@@ -6,7 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy as sa
 from sqlalchemy import orm
 from asyncom import OMBase
-
+from sqlalchemy.orm import exc as orm_exc
 
 Base = declarative_base(cls=OMBase)
 
@@ -133,3 +133,20 @@ async def test_add_instance_with_provided_pk(async_db, data):
     assert res.name == ins.name
     assert res.id == ins.id
     assert res.value == ins.value
+
+
+@pytest.mark.asyncio
+async def test_one_instance(async_db, data):
+    assert await async_db.query(OrmTest).count() == 0
+    ins = OrmTest(name="test", value="xxx")
+    await async_db.add(ins)
+    assert await async_db.query(OrmTest).count() == 1
+    ins2 = OrmTest(name="test2", value="xxx")
+    await async_db.add(ins2)
+    res = await async_db.query(OrmTest).filter(OrmTest.name=="test").one()
+    assert res.id == ins.id
+    with pytest.raises(orm_exc.NoResultFound) as excinfo:
+        res = await async_db.query(OrmTest).filter(
+            OrmTest.name=="test3").one()
+    with pytest.raises(orm_exc.MultipleResultsFound) as execinfo:
+        res = await async_db.query(OrmTest).one()
