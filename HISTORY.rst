@@ -2,6 +2,10 @@
 History
 =======
 
+0.1.4
+----
+query(Object).get should return None if not found
+
 0.1.3
 ----
 - Fixes and improvements. Lay out basic API

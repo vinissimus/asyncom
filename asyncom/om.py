@@ -24,7 +24,7 @@ class OMQuery(Query):
     async def get(self, ident):
         mapper = self._only_full_mapper_zero("get")
         pk = mapper.primary_key
-        return await self.filter(pk[0] == ident).one()
+        return await self.filter(pk[0] == ident).one_or_none()
 
     async def one_or_none(self):
         ret = await self.all()
