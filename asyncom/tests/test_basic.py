@@ -150,3 +150,10 @@ async def test_one_instance(async_db, data):
             OrmTest.name=="test3").one()
     with pytest.raises(orm_exc.MultipleResultsFound) as execinfo:
         res = await async_db.query(OrmTest).one()
+
+    assert await async_db.query(OrmTest).filter(
+        OrmTest.name=="test3").one_or_none() is None
+
+    assert await async_db.query(OrmTest).get(100) is None
+    await async_db.query(OrmTest).delete()
+    assert await async_db.query(OrmTest).count() == 0
