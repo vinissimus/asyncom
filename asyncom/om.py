@@ -103,13 +103,18 @@ class OMDatabase(Database):
         mapper = inspect(ins).mapper
         # currently only support for one primary key
         _pk = mapper.primary_key[0].name
+        has_pk = getattr(ins, _pk, None)
         values = {
             c.key: getattr(ins, c.key)
-            for c in mapper.column_attrs if c.key != _pk
+            for c in mapper.column_attrs
         }
+        if not has_pk:
+            del values[_pk]
+
         expr = ins.__table__.insert().values(values)
         pk = await self.execute(expr)
-        setattr(ins, _pk, pk)
+        if not has_pk:
+            setattr(ins, _pk, pk)
         return pk
 
     async def update(self, ins):
@@ -142,3 +147,7 @@ class OMBase:
     @classmethod
     def select(cls, *args, **kwargs):
         return cls.__table__.select(*args, **kwargs)
+
+    #def childern(self, sess, cls_name):
+    #    cls = OMBase._decl_class_registry.get(cls_name)
+    # look for primary key and reference key

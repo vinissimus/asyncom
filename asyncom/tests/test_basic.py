@@ -123,3 +123,13 @@ async def test_sqlbuilder_still_works(async_db, data):
         .with_only_columns([OrmTest.value]))
 
     assert await async_db.fetch_val(query=q) == "xxxx"
+
+
+@pytest.mark.asyncio
+async def test_add_instance_with_provided_pk(async_db, data):
+    ins = OrmTest(id=1, name="test", value="xxx")
+    await async_db.add(ins)
+    res = await async_db.query(OrmTest).get(1)
+    assert res.name == ins.name
+    assert res.id == ins.id
+    assert res.value == ins.value
