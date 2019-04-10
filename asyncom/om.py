@@ -69,10 +69,10 @@ class OMQuery(Query):
         result = await self.__db.fetch_all(context.statement)
         return self.map_to_instances(result, context)
 
-    def map_to_instances(self, result, context=None):
+    def map_to_instances_old(self, result, context=None):
         entity = self._entity_zero()
         table = entity.entity.__tablename__ + "_"
-
+        import pdb; pdb.set_trace()
         def map_result(v):
             res = {}
             for k, v in dict(v).items():
@@ -80,11 +80,31 @@ class OMQuery(Query):
             return res
         return [entity.entity(**map_result(r)) for r in result]
 
+    def map_to_instances(self, result, context):
+        entity = self._entity_zero()
+        prefixes = get_prefixes(context.statement._columns_plus_names)
+        def map_result(v):
+            return {prefixes[k]: v for k, v in dict(v).items()}
+        return [entity.entity(**map_result(r)) for r in result]
+
     async def delete(self):
         context = self._compile_context()
         entity = self._entity_zero().entity
         op = sql.delete(entity.__table__, context.whereclause)
         return await self.__db.execute(op)
+
+
+def get_prefixes(cols):
+    res = {}
+    for key, col in cols:
+        name = []
+        if col.table.schema:
+            name.append(col.table.schema)
+        name.append(col.table.name)
+        prefix = "_".join(name)
+        # k = key.replace('')
+        res[key] = key.replace(prefix + '_', "")
+    return res
 
 
 class OMDatabase(Database):

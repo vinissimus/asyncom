@@ -1,5 +1,9 @@
 ## Changelog
 
+0.1.5
+---
+- Load inherited models. 
+
 0.1.4
 ----
 - query(Object).get should return None if not found
