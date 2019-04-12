@@ -14,7 +14,9 @@ from databases import Database
 class OMQuery(Query):
     def __init__(self, entities, database=None):
         self.__db = database
+        self._all = None
         super().__init__(entities, session=None)
+
 
     async def all(self):
         context = self._compile_context()
@@ -37,6 +39,9 @@ class OMQuery(Query):
             raise orm_exc.MultipleResultsFound(
                 "Multiple rows were found for one_or_none()"
             )
+
+    def __aiter__(self):
+        return self.iterate()
 
     async def one(self):
         try:
@@ -65,27 +70,28 @@ class OMQuery(Query):
         except orm_exc.NoResultFound:
             return None
 
+    async def iterate(self):
+        context = self._compile_context()
+        context.statement.use_labels = True
+        fn = self.get_mapper(context)
+        async for row in self.__db.iterate(context.statement):
+            yield fn(row)
+
     async def _execute(self, context):
         result = await self.__db.fetch_all(context.statement)
         return self.map_to_instances(result, context)
 
-    def map_to_instances_old(self, result, context=None):
-        entity = self._entity_zero()
-        table = entity.entity.__tablename__ + "_"
-        import pdb; pdb.set_trace()
-        def map_result(v):
-            res = {}
-            for k, v in dict(v).items():
-                res[k.split(table)[1]] = v
-            return res
-        return [entity.entity(**map_result(r)) for r in result]
-
-    def map_to_instances(self, result, context):
+    def get_mapper(self, context):
         entity = self._entity_zero()
         prefixes = get_prefixes(context.statement._columns_plus_names)
         def map_result(v):
-            return {prefixes[k]: v for k, v in dict(v).items()}
-        return [entity.entity(**map_result(r)) for r in result]
+            return entity.entity(
+                **{prefixes[k]: v for k, v in dict(v).items()})
+        return map_result
+
+    def map_to_instances(self, result, context):
+        fn = self.get_mapper(context)
+        return [fn(r) for r in result]
 
     async def delete(self):
         context = self._compile_context()
@@ -102,7 +108,6 @@ def get_prefixes(cols):
             name.append(col.table.schema)
         name.append(col.table.name)
         prefix = "_".join(name)
-        # k = key.replace('')
         res[key] = key.replace(prefix + '_', "")
     return res
 
@@ -168,6 +173,3 @@ class OMBase:
     def select(cls, *args, **kwargs):
         return cls.__table__.select(*args, **kwargs)
 
-    #def childern(self, sess, cls_name):
-    #    cls = OMBase._decl_class_registry.get(cls_name)
-    # look for primary key and reference key

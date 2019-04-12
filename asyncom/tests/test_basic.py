@@ -157,3 +157,20 @@ async def test_one_instance(async_db, data):
     assert await async_db.query(OrmTest).get(100) is None
     await async_db.query(OrmTest).delete()
     assert await async_db.query(OrmTest).count() == 0
+
+
+@pytest.mark.asyncio
+async def test_iterator(async_db, data):
+    await async_db.add(
+        OrmTest(name="test", value="xxx"),
+        OrmTest(name="tes2", value="xxx"),
+        OrmTest(name="tes3", value="xxx")
+    )
+    counter = 0
+    values = []
+    async for item in async_db.query(OrmTest):
+        counter += 1
+        values.append(item.name)
+
+    assert counter == 3
+    assert 'tes2' in values
