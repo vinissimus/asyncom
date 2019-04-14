@@ -17,7 +17,6 @@ class OMQuery(Query):
         self._all = None
         super().__init__(entities, session=None)
 
-
     async def all(self):
         context = self._compile_context()
         context.statement.use_labels = True
@@ -84,6 +83,7 @@ class OMQuery(Query):
     def get_mapper(self, context):
         entity = self._entity_zero()
         prefixes = get_prefixes(context.statement._columns_plus_names)
+
         def map_result(v):
             return entity.entity(
                 **{prefixes[k]: v for k, v in dict(v).items()})
@@ -125,35 +125,10 @@ class OMDatabase(Database):
         return res
 
     async def _add_impl(self, ins):
-        mapper = inspect(ins).mapper
-        # currently only support for one primary key
-        _pk = mapper.primary_key[0].name
-        has_pk = getattr(ins, _pk, None)
-        values = {
-            c.key: getattr(ins, c.key)
-            for c in mapper.column_attrs
-        }
-        if not has_pk:
-            del values[_pk]
-
-        expr = ins.__table__.insert().values(values)
-        pk = await self.execute(expr)
-        if not has_pk:
-            setattr(ins, _pk, pk)
-        return pk
+        return await insert(ins, self)
 
     async def update(self, ins):
-        mapper = inspect(ins).mapper
-        pk_column = mapper.primary_key[0]
-        pk_value = getattr(ins, pk_column.name)
-        values = {
-            c.key: getattr(ins, c.key)
-            for c in mapper.column_attrs if c.key != pk_column.name
-        }
-        expr = ins.__table__.update().values(values).where(
-            pk_column == pk_value
-        )
-        return await self.execute(expr)
+        return await update(ins, self)
 
     async def remove(self, ins):
         mapper = inspect(ins).mapper
@@ -173,3 +148,45 @@ class OMBase:
     def select(cls, *args, **kwargs):
         return cls.__table__.select(*args, **kwargs)
 
+
+async def insert(ins, conn):
+    mapper = ins.__mapper__
+    pk_val = None
+    first = True
+    for table in mapper.tables:
+        values = {}
+        for column in table.columns:
+            val = getattr(ins, column.key)
+            if val:
+                values[column.name] = val
+        expr = table.insert().values(values)
+        _pk_val = await conn.execute(expr)
+        # is first pk on inheritance chain (first table) and is not provided
+        if first and _pk_val:
+            pk_val = _pk_val
+            setattr(ins, mapper.primary_key[0].key, pk_val)
+            first = None
+
+        if mapper.inherit_condition is not None:
+            if (
+                mapper.inherit_condition.left ==
+                mapper.primary_key[0]
+            ):
+                col_name = mapper.inherit_condition.right.name
+                setattr(ins, col_name, pk_val)
+    return pk_val
+
+
+async def update(ins, conn):
+    mapper = ins.__mapper__
+    for table in mapper.tables:
+        values = {}
+        for column in table.columns:
+            val = getattr(ins, column.key)
+            if val:
+                values[column.name] = val
+        pk_ = list(table.primary_key.columns)[0]
+        expr = table.update().values(values).where(
+            pk_ == values[pk_.key]
+        )
+        await conn.execute(expr)

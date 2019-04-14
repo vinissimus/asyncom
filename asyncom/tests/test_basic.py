@@ -1,10 +1,7 @@
 
-"""Tests for `pgorm` package."""
-
 import pytest
 from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy as sa
-from sqlalchemy import orm
 from asyncom import OMBase
 from sqlalchemy.orm import exc as orm_exc
 
@@ -49,7 +46,6 @@ async def data(async_db):
     url = str(async_db.url)
     engine = sa.create_engine(url)
     Base.metadata.create_all(engine)
-
 
 
 @pytest.mark.asyncio
@@ -119,8 +115,8 @@ async def test_sqlbuilder_still_works(async_db, data):
     await async_db.add(ins, ins2)
 
     q = (OrmTest.select()
-        .where(OrmTest.name == "test")
-        .with_only_columns([OrmTest.value]))
+         .where(OrmTest.name == "test")
+         .with_only_columns([OrmTest.value]))
 
     assert await async_db.fetch_val(query=q) == "xxxx"
 
@@ -143,16 +139,16 @@ async def test_one_instance(async_db, data):
     assert await async_db.query(OrmTest).count() == 1
     ins2 = OrmTest(name="test2", value="xxx")
     await async_db.add(ins2)
-    res = await async_db.query(OrmTest).filter(OrmTest.name=="test").one()
+    res = await async_db.query(OrmTest).filter(OrmTest.name == "test").one()
     assert res.id == ins.id
-    with pytest.raises(orm_exc.NoResultFound) as excinfo:
+    with pytest.raises(orm_exc.NoResultFound):
         res = await async_db.query(OrmTest).filter(
-            OrmTest.name=="test3").one()
-    with pytest.raises(orm_exc.MultipleResultsFound) as execinfo:
+            OrmTest.name == "test3").one()
+    with pytest.raises(orm_exc.MultipleResultsFound):
         res = await async_db.query(OrmTest).one()
 
     assert await async_db.query(OrmTest).filter(
-        OrmTest.name=="test3").one_or_none() is None
+        OrmTest.name == "test3").one_or_none() is None
 
     assert await async_db.query(OrmTest).get(100) is None
     await async_db.query(OrmTest).delete()

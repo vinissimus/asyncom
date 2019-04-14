@@ -1,5 +1,7 @@
 {
     "python.unitTest.unittestEnabled": false,
     "python.unitTest.nosetestsEnabled": false,
-    "python.unitTest.pyTestEnabled": true
+    "python.unitTest.pyTestEnabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.enabled": true
 }

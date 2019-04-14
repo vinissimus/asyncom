@@ -1,8 +1,16 @@
 ## Changelog
 
+0.1.7
+----
+- Support adding basic inherited models
+
+0.1.6
+---
+- query should be an async iterator
+
 0.1.5
 ---
-- Load inherited models. 
+- Load inherited models.
 
 0.1.4
 ----
