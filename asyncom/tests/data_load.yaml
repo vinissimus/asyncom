@@ -1,0 +1,9 @@
+---
+- model: data_importer
+  data:
+    - id: 1
+      name: hola
+    - id: 2
+      name: proba
+    - id: 3
+      name: proba3

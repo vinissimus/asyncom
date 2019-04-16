@@ -1,5 +1,9 @@
 ## Changelog
 
+0.1.8
+---
+- Yaml data importer
+
 0.1.7
 ----
 - Support adding basic inherited models
