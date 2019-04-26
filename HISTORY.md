@@ -1,5 +1,9 @@
 ## Changelog
 
+0.2.0
+----
+- Fix bug on column.defaults
+
 0.1.9
 ----
 - Added Column default and onupdate on update and add

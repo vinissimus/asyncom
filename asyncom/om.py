@@ -172,11 +172,6 @@ async def insert(ins, conn):
                 elif column.default.is_scalar:
                     values[column.name] = column.default.arg
                     setattr(ins, column.name, column.default.arg)
-                else:
-                    raise NotImplementedError(
-                        'we have limited support for column defaults, '
-                        'only scalar and callables are allowed'
-                    )
 
         expr = table.insert().values(values)
         _pk_val = await conn.execute(expr)
