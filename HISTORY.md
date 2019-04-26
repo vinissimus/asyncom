@@ -1,5 +1,11 @@
 ## Changelog
 
+0.1.9
+----
+- Added Column default and onupdate on update and add
+  (only for scalar values and callables)
+- Added small proxy method on OMDatabaes, to raw asyncpg connection
+
 0.1.8
 ---
 - Yaml data importer

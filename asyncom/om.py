@@ -142,6 +142,11 @@ class OMDatabase(Database):
 
     delete = remove
 
+    @property
+    def raw(self):
+        # pointer to the raw asyncpg connection
+        return self.connection().raw_connection
+
 
 class OMBase:
     @classmethod
@@ -159,6 +164,20 @@ async def insert(ins, conn):
             val = getattr(ins, column.key)
             if val:
                 values[column.name] = val
+            elif column.default:
+                if column.default.is_callable:
+                    _val = column.default.arg({})
+                    values[column.name] = _val
+                    setattr(ins, column.name, _val)
+                elif column.default.is_scalar:
+                    values[column.name] = column.default.arg
+                    setattr(ins, column.name, column.default.arg)
+                else:
+                    raise NotImplementedError(
+                        'we have limited support for column defaults, '
+                        'only scalar and callables are allowed'
+                    )
+
         expr = table.insert().values(values)
         _pk_val = await conn.execute(expr)
         # is first pk on inheritance chain (first table) and is not provided
@@ -185,6 +204,14 @@ async def update(ins, conn):
             val = getattr(ins, column.key)
             if val:
                 values[column.name] = val
+            elif column.onupdate:
+                if column.onupdate.is_callable:
+                    _val = column.onupdate.arg({})
+                    values[column.name] = _val
+                    setattr(ins, column.name, _val)
+                elif column.onupdate.is_scalar:
+                    values[column.name] = column.onupdate.arg
+                    setattr(ins, column.name, column.onupdate.arg)
         pk_ = list(table.primary_key.columns)[0]
         expr = table.update().values(values).where(
             pk_ == values[pk_.key]
