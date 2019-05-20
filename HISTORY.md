@@ -1,14 +1,14 @@
 ## Changelog
 
-0.2.0
-----
-- Fix bug on column.defaults
+0.2.1
+---
+- Small fix when checking none on json fields arrays
 
 0.1.9
 ----
 - Added Column default and onupdate on update and add
   (only for scalar values and callables)
-- Added small proxy method on OMDatabaes, to raw asyncpg connection
+- Added small proxy prop on OMDatabaes, to raw asyncpg connection
 
 0.1.8
 ---

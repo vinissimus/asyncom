@@ -196,8 +196,8 @@ async def update(ins, conn):
     for table in mapper.tables:
         values = {}
         for column in table.columns:
-            val = getattr(ins, column.key)
-            if val:
+            val = getattr(ins, column.key, None)
+            if val is not None:
                 values[column.name] = val
             elif column.onupdate:
                 if column.onupdate.is_callable:
