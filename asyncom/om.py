@@ -191,13 +191,16 @@ async def insert(ins, conn):
     return pk_val
 
 
+_marker = object()
+
+
 async def update(ins, conn):
     mapper = ins.__mapper__
     for table in mapper.tables:
         values = {}
         for column in table.columns:
-            val = getattr(ins, column.key, None)
-            if val is not None:
+            val = getattr(ins, column.key, _marker)
+            if val != _marker:
                 values[column.name] = val
             elif column.onupdate:
                 if column.onupdate.is_callable:
