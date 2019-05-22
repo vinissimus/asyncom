@@ -1,4 +1,8 @@
 ## Changelog
+0.2.3
+---
+- Fix boolean expr on adding prods.
+  Allowing to add values with 0
 
 0.2.1
 ---

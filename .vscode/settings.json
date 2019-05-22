@@ -1,7 +1,8 @@
 {
-    "python.unitTest.unittestEnabled": false,
-    "python.unitTest.nosetestsEnabled": false,
-    "python.unitTest.pyTestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.nosetestsEnabled": false,
+    "python.testing.pyTestEnabled": true,
     "python.linting.flake8Enabled": true,
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "python.pythonPath": "env/bin/python3.7"
 }

@@ -154,6 +154,9 @@ class OMBase:
         return cls.__table__.select(*args, **kwargs)
 
 
+_marker = object()
+
+
 async def insert(ins, conn):
     mapper = ins.__mapper__
     pk_val = None
@@ -162,7 +165,7 @@ async def insert(ins, conn):
         values = {}
         for column in table.columns:
             val = getattr(ins, column.key)
-            if val:
+            if val is not None:
                 values[column.name] = val
             elif column.default:
                 if column.default.is_callable:
@@ -191,9 +194,6 @@ async def insert(ins, conn):
     return pk_val
 
 
-_marker = object()
-
-
 async def update(ins, conn):
     mapper = ins.__mapper__
     for table in mapper.tables:
@@ -202,7 +202,8 @@ async def update(ins, conn):
             val = getattr(ins, column.key, _marker)
             if val != _marker:
                 values[column.name] = val
-            elif column.onupdate:
+
+            if column.onupdate:
                 if column.onupdate.is_callable:
                     _val = column.onupdate.arg({})
                     values[column.name] = _val
