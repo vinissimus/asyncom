@@ -1,4 +1,8 @@
 ## Changelog
+o.2.5
+---
+- Fix bug with om.delete an inherited objects
+
 0.2.3
 ---
 - Fix boolean expr on adding prods.
