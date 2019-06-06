@@ -64,6 +64,23 @@ async def test_can_query_inherited_props(db):
 
 
 @pytest.mark.asyncio
+async def test_can_delete_inherited_props(db):
+    data = datetime.datetime.now()
+    eleA = Published(key='a', val='1', date=data)
+    eleB = Published(key='b', val='2', date=data)
+    await db.add(eleA)
+    await db.add(eleB)
+    inherit = await db.query(Published).get(eleA.id)
+    assert inherit.key == 'a'
+    assert inherit.val == '1'
+    assert inherit.date == data
+    await db.delete(inherit)
+    l = await db.query(Published).all()
+    assert len(l) == 1
+    assert l[0].key == 'b'
+
+
+@pytest.mark.asyncio
 async def test_operate_with_abstract_class(db):
     conc = Concrete(key='a', val='a')
     await db.add(conc)

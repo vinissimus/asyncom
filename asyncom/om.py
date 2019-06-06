@@ -134,7 +134,7 @@ class OMDatabase(Database):
         mapper = inspect(ins).mapper
         pk_column = mapper.primary_key[0]
         pk_value = getattr(ins, pk_column.name)
-        expr = ins.__table__.delete().where(
+        expr = pk_column.table.delete().where(
             pk_column == pk_value
         )
         ins = None
