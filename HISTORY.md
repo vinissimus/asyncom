@@ -1,5 +1,5 @@
 ## Changelog
-o.2.5
+0.3.0
 ---
 - Fix bug with om.delete an inherited objects
 
