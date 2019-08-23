@@ -11,10 +11,22 @@ from sqlalchemy.orm import exc as orm_exc
 from databases import Database
 
 
+def default_mapper_factory(query, context):
+    entity = query._entity_zero()
+    prefixes = get_prefixes(context.statement._columns_plus_names)
+
+    def map_result(v):
+        return entity.entity(
+            **{prefixes[k]: v for k, v in dict(v).items()})
+    return map_result
+
+
 class OMQuery(Query):
-    def __init__(self, entities, database=None):
+    def __init__(self, entities, database=None,
+                 mapper_factory=default_mapper_factory):
         self.__db = database
         self._all = None
+        self._mapper_factory = mapper_factory
         super().__init__(entities, session=None)
 
     async def all(self):
@@ -81,13 +93,7 @@ class OMQuery(Query):
         return self.map_to_instances(result, context)
 
     def get_mapper(self, context):
-        entity = self._entity_zero()
-        prefixes = get_prefixes(context.statement._columns_plus_names)
-
-        def map_result(v):
-            return entity.entity(
-                **{prefixes[k]: v for k, v in dict(v).items()})
-        return map_result
+        return self._mapper_factory(self, context)
 
     def map_to_instances(self, result, context):
         fn = self.get_mapper(context)
@@ -113,8 +119,10 @@ def get_prefixes(cols):
 
 
 class OMDatabase(Database):
-    def query(self, args):
-        return OMQuery(args, database=self)
+
+    def query(self, args, mapper_factory=default_mapper_factory):
+        return OMQuery(args, database=self,
+                       mapper_factory=mapper_factory)
 
     async def add(self, *args):
         res = []
