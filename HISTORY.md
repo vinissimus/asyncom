@@ -1,4 +1,11 @@
 ## Changelog
+
+0.3.1
+-----
+
+- Be able to provide mapper_factory to `OMQuery`
+  [vangheem]
+
 0.3.0
 ---
 - Fix bug with om.delete an inherited objects
