@@ -18,7 +18,6 @@ with open('VERSION') as ff:
 requirements = [
     'sqlalchemy',
     'asyncpg',
-    'databases'
 ]
 
 setup_requirements = ['pytest-runner', ]

@@ -1,5 +1,5 @@
 import pytest
-
+import asyncpg
 
 @pytest.fixture(scope='session')
 def pgsql():
@@ -12,15 +12,17 @@ def pgsql():
 @pytest.fixture(scope='session')
 def db(pgsql):
     from asyncom import OMDatabase
-    from databases import DatabaseURL
     host, port = pgsql
     url = f'postgresql://postgres@{host}:{port}/guillotina'
-    dbins = OMDatabase(DatabaseURL(url), force_rollback=True)
+    dbins = OMDatabase(url=url)
     yield dbins
 
 
 @pytest.fixture
 async def async_db(db):
     await db.connect()
+    trans = db.transaction()
+    await trans.start()
     yield db
+    await trans.rollback()
     await db.disconnect()

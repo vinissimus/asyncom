@@ -1,14 +1,22 @@
 
-"""Main module."""
-
-
 from collections import Iterable
-
-from sqlalchemy import inspect, sql
-from sqlalchemy.orm import Query
+from collections.abc import Mapping
+from sqlalchemy import inspect
+from sqlalchemy import sql
+from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import pypostgresql
+from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import Query
+from sqlalchemy.sql.schema import Column
 
-from databases import Database
+import asyncpg
+import logging
+import typing
+
+logger = logging.getLogger("asyncom")
+
+_result_processors = {}
 
 
 def default_mapper_factory(query, context):
@@ -19,6 +27,54 @@ def default_mapper_factory(query, context):
         return entity.entity(
             **{prefixes[k]: v for k, v in dict(v).items()})
     return map_result
+
+
+class Record(Mapping):
+    def __init__(self, row, result_columns, dialect):
+        self._row = row
+        self._result_columns = result_columns
+        self._dialect = dialect
+        self._column_map = (
+            {}
+        )  # type: typing.Mapping[str, typing.Tuple[int, TypeEngine]]
+        self._column_map_int = (
+            {}
+        )  # type: typing.Mapping[int, typing.Tuple[int, TypeEngine]]
+        self._column_map_full = (
+            {}
+        )  # type: typing.Mapping[str, typing.Tuple[int, TypeEngine]]
+        for idx, (column_name, _, column, datatype) in enumerate(
+            self._result_columns
+        ):
+            self._column_map[column_name] = (idx, datatype)
+            self._column_map_int[idx] = (idx, datatype)
+            self._column_map_full[str(column[0])] = (idx, datatype)
+
+    def __getitem__(self, key: typing.Any) -> typing.Any:
+        if len(self._column_map) == 0:  # raw query
+            return self._row[tuple(self._row.keys()).index(key)]
+        elif type(key) is Column:
+            idx, datatype = self._column_map_full[str(key)]
+        elif type(key) is int:
+            idx, datatype = self._column_map_int[key]
+        else:
+            idx, datatype = self._column_map[key]
+        raw = self._row[idx]
+        try:
+            processor = _result_processors[datatype]
+        except KeyError:
+            processor = datatype.result_processor(self._dialect, None)
+            _result_processors[datatype] = processor
+
+        if processor is not None:
+            return processor(raw)
+        return raw
+
+    def __iter__(self) -> typing.Iterator:
+        return iter(self._row.keys())
+
+    def __len__(self) -> int:
+        return len(self._row)
 
 
 class OMQuery(Query):
@@ -118,7 +174,109 @@ def get_prefixes(cols):
     return res
 
 
-class OMDatabase(Database):
+class OMAsyncPG:
+    def __init__(self, conn=None, url=None):
+        self._con = conn
+        self.url = url
+        self._dialect = self._get_dialect()
+
+    @property
+    def connection(self):
+        return self._con
+
+    @property
+    def dialect(self):
+        return self._dialect
+
+    async def connect(self):
+        if not self._con:
+            self._con = await asyncpg.connect(self.url)
+
+    async def disconnect(self):
+        if self.connection:
+            await self.connection.close()
+            self._con = None
+
+    async def fetch_all(self, query, values=None):
+        query, args, result_columns = self._compile(query)
+        rows = await self.connection.fetch(query, *args)
+        return [
+            Record(row, result_columns, self._dialect) for row in rows
+        ]
+
+    async def fetch_one(self, query):
+        query, args, result_columns = self._compile(query)
+        row = await self.connection.fetchrow(query, *args)
+        return Record(row, result_columns, self._dialect)
+
+    async def fetch_val(self, query):
+        query, args, result_columns = self._compile(query)
+        return await self.connection.fetchval(query, *args)
+
+    async def execute(self, query) -> typing.Any:
+        query, args, result_columns = self._compile(query)
+        return await self.connection.fetchval(query, *args)
+
+    async def __aenter__(self):
+        return self
+
+    def transaction(self):
+        return self.connection.transaction()
+
+    async def execute_many(self, queries) -> None:
+        # asyncpg uses prepared statements under the hood, so we just
+        # loop through multiple executes here, which should all end up
+        # using the same prepared statement.
+        for single_query in queries:
+            single_query, args, result_columns = self._compile(single_query)
+            await self.connection.execute(single_query, *args)
+
+    async def iterate(self, query):
+        query, args, result_columns = self._compile(query)
+        async for row in self.connection.cursor(query, *args):
+            yield row
+
+    def _get_dialect(self) -> Dialect:
+        dialect = pypostgresql.dialect(paramstyle="pyformat")
+        dialect.implicit_returning = True
+        dialect.supports_native_enum = True
+        dialect.supports_smallserial = True  # 9.2+
+        dialect._backslash_escapes = False
+        dialect.supports_sane_multi_rowcount = True  # psycopg 2.0.9+
+        dialect._has_native_hstore = True
+        dialect.supports_native_decimal = True
+        return dialect
+
+    def _compile(self, query):
+        if isinstance(query, str):
+            query = text(query)
+
+        compiled = query.compile(dialect=self._dialect)
+        compiled_params = sorted(compiled.params.items())
+
+        mapping = {
+            key: "$" + str(i) for i, (key, _) in enumerate(
+                compiled_params, start=1
+            )
+        }
+        compiled_query = compiled.string % mapping
+
+        processors = compiled._bind_processors
+        args = [
+            processors[key](val) if key in processors else val
+            for key, val in compiled_params
+        ]
+
+        query_message = compiled_query.replace(" \n", " ").replace("\n", " ")
+        logger.debug(
+            "Query: %s Args: %s",
+            query_message,
+            repr(tuple(args))
+        )
+        return compiled_query, args, compiled._result_columns
+
+
+class OMDatabase(OMAsyncPG):
 
     def query(self, args, mapper_factory=default_mapper_factory):
         return OMQuery(args, database=self,
