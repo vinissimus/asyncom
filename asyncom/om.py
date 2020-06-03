@@ -10,6 +10,10 @@ from sqlalchemy.orm import exc as orm_exc
 
 from databases import Database
 
+from typing import TypeVar, Generic, Optional, List, Type, AsyncIterator, Union, Any
+
+T = TypeVar("T")
+
 
 def default_mapper_factory(query, context):
     entity = query._entity_zero()
@@ -21,25 +25,25 @@ def default_mapper_factory(query, context):
     return map_result
 
 
-class OMQuery(Query):
-    def __init__(self, entities, database=None,
+class OMQuery(Query, Generic[T]):
+    def __init__(self, entity: T, database=None,
                  mapper_factory=default_mapper_factory):
         self.__db = database
         self._all = None
         self._mapper_factory = mapper_factory
-        super().__init__(entities, session=None)
+        super().__init__([entity], session=None)
 
-    async def all(self):
+    async def all(self) -> List[T]:
         context = self._compile_context()
         context.statement.use_labels = True
         return await self._execute(context)
 
-    async def get(self, ident):
+    async def get(self, ident: Any) -> Optional[T]:
         mapper = self._only_full_mapper_zero("get")
         pk = mapper.primary_key
         return await self.filter(pk[0] == ident).one_or_none()
 
-    async def one_or_none(self):
+    async def one_or_none(self) -> Optional[T]:
         ret = await self.all()
         length = len(ret)
         if length == 1:
@@ -54,7 +58,7 @@ class OMQuery(Query):
     def __aiter__(self):
         return self.iterate()
 
-    async def one(self):
+    async def one(self) -> T:
         try:
             ret = await self.one_or_none()
         except orm_exc.MultipleResultsFound:
@@ -66,38 +70,38 @@ class OMQuery(Query):
                 raise orm_exc.NoResultFound("No row was found for one()")
         return ret
 
-    async def count(self):
+    async def count(self) -> Optional[int]:
         col = sql.func.count(sql.literal_column("*"))
         return await self.from_self(col).scalar()
 
-    async def scalar(self):
+    async def scalar(self) -> Optional[int]:
         context = self._compile_context()
         context.statement.use_labels = True
         try:
             ret = await self.__db.fetch_val(context.statement)
             if not isinstance(ret, Iterable):
                 return ret
-            return ret[0]
+            return ret[0]  # type: ignore
         except orm_exc.NoResultFound:
             return None
 
-    async def iterate(self):
+    async def iterate(self) -> AsyncIterator[T]:
         context = self._compile_context()
         context.statement.use_labels = True
         fn = self.get_mapper(context)
         async for row in self.__db.iterate(context.statement):
-            yield fn(row)
+            yield fn(row)  # type: ignore
 
-    async def _execute(self, context):
+    async def _execute(self, context) -> List[T]:
         result = await self.__db.fetch_all(context.statement)
         return self.map_to_instances(result, context)
 
-    def get_mapper(self, context):
+    def get_mapper(self, context) -> Type[T]:
         return self._mapper_factory(self, context)
 
-    def map_to_instances(self, result, context):
+    def map_to_instances(self, result, context) -> List[T]:
         fn = self.get_mapper(context)
-        return [fn(r) for r in result]
+        return [fn(r) for r in result]  # type: ignore
 
     async def delete(self):
         context = self._compile_context()
@@ -120,8 +124,9 @@ def get_prefixes(cols):
 
 class OMDatabase(Database):
 
-    def query(self, args, mapper_factory=default_mapper_factory):
-        return OMQuery(args, database=self,
+    def query(self, entity: T,
+              mapper_factory=default_mapper_factory) -> OMQuery[T]:
+        return OMQuery(entity, database=self,
                        mapper_factory=mapper_factory)
 
     async def add(self, *args):
