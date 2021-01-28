@@ -1,5 +1,9 @@
 ## Changelog
 
+0.3.2
+-----
+- Support query multiple primary keys
+
 0.3.1
 -----
 

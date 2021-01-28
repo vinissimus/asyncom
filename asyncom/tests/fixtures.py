@@ -1,4 +1,10 @@
+from pytest_docker_fixtures import images
+
 import pytest
+
+images.configure(
+    "postgresql", "postgres", "11.1"
+)
 
 
 @pytest.fixture(scope='session')
