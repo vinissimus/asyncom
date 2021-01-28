@@ -224,8 +224,8 @@ async def update(ins, conn):
                 elif column.onupdate.is_scalar:
                     values[column.name] = column.onupdate.arg
                     setattr(ins, column.name, column.onupdate.arg)
-        pk_ = list(table.primary_key.columns)[0]
-        expr = table.update().values(values).where(
-            pk_ == values[pk_.key]
-        )
+
+        expr = table.update().values(values)
+        for pk_ in table.primary_key.columns:
+            expr = expr.where(pk_ == values[pk_.key])
         await conn.execute(expr)

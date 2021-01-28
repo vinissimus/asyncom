@@ -31,6 +31,13 @@ class OrmTest(Base):
         )
 
 
+class OrmTestMultiPKey(Base):
+    __tablename__ = 'orm_test_pk'
+
+    key1 = sa.Column(sa.String, primary_key=True)
+    key2 = sa.Column(sa.String, primary_key=True)
+
+
 class ManyTests(Base):
     __tablename__ = 'orm_manytest'
 
@@ -170,3 +177,16 @@ async def test_iterator(async_db, data):
 
     assert counter == 3
     assert 'tes2' in values
+
+
+@pytest.mark.asyncio
+async def test_multiple_primary_keys(async_db, data):
+    await async_db.add(
+        OrmTestMultiPKey(key1="key1", key2="key2"),
+        OrmTestMultiPKey(key1="key1", key2="key22")
+    )
+    ob = await async_db.query(OrmTestMultiPKey).filter(
+        OrmTestMultiPKey.key1 == 'key1',
+        OrmTestMultiPKey.key2 == 'key2').one()
+
+    await async_db.update(ob)
