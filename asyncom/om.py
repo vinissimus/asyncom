@@ -31,7 +31,9 @@ class OMQuery(Query, Generic[T]):
         self.__db = database
         self._all = None
         self._mapper_factory = mapper_factory
-        super().__init__([entity], session=None)
+        if not isinstance(entity, list):
+            entity = [entity]
+        super().__init__(entity, session=None)
 
     async def all(self) -> List[T]:
         context = self._compile_context()
