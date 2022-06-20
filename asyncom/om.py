@@ -2,7 +2,7 @@
 """Main module."""
 
 
-from collections import Iterable
+from collections.abc import Iterable
 
 from sqlalchemy import inspect, sql
 from sqlalchemy.orm import Query
