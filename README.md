@@ -9,7 +9,7 @@ factor instances of them on querys. (*Limited support)
 
 There is still no support for relations.
 
-Depens on [encode/databases](https://github.com/encode/databases) dependency.
+Depends on [encode/databases](https://github.com/encode/databases).
 
 
 ## Motivation
