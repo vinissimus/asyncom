@@ -1,5 +1,9 @@
 ## Changelog
 
+0.3.3
+-----
+- Fix collections import for Python 3.10
+
 0.3.2
 -----
 - Support query multiple primary keys
